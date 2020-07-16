@@ -10,30 +10,12 @@ class MainPage extends Component {
     super();
     this.state = {
       alertVisible: false,
+      ready: false,
       type: 'q',
       name: '',
       search: false,
-      results: [
-        { 
-          id: '',
-          common_name: '',
-          scientific_name: '',
-          link: ''
-        }
-       ],
-      plants: [
-        { 
-          _id: '',
-          common_name: '',
-          scientific_name: '',
-          genus: '',
-          family: '', 
-          order: '',
-          class: '', 
-          division: '', 
-          image: 'foo'
-        }
-      ]
+      results: '',
+      plants: ''
     };
   }
   //display loading icon
@@ -58,7 +40,8 @@ class MainPage extends Component {
       axios.get('/getallplants')
         .then(result => {
           if (result.data !== "") {
-            this.setState({ plants: result.data });
+            this.setState({ plants: result.data.reverse() });
+            this.setState({ ready: true });
           }
         })
         .catch(error => {
@@ -71,6 +54,7 @@ class MainPage extends Component {
     this.getAllPlants();
   }
 
+  //update fields in state
   onChange = (event) => {
     this.setState({
       [event.target.name]: encodeURIComponent(event.target.value)
@@ -86,11 +70,10 @@ class MainPage extends Component {
     trackPromise(
       axios.get(query)
         .then(result => {
-          if (result.data === '' || result.data === undefined) {
-            this.setState({ alertVisible: true });
-            alert('Plant not found');
+          if (result === '' || result.data.data === undefined) {
+            alert('No plants found');
           } else {
-            this.setState({ results: result.data });
+            this.setState({ results: result.data.data });
             this.setState({ search: true });
           }
         })
@@ -101,35 +84,43 @@ class MainPage extends Component {
     
     this.displayResults();
   }
+  //display search results
   displayResults() {
     if (this.state.search) {
       return(<div className="App-table">
-      <table>
-        <thead>
-          <th>Common name</th>
-          <th>Scientific name</th>
-        </thead>
-        <tbody>
-          {this.state.results.map(this.displayResultRows, this)}
-        </tbody>
-      </table>
-    </div>)
+        <table>
+          <thead>
+            <th>Common name</th>
+            <th>Scientific name</th>
+            <th>Image</th>
+          </thead>
+          <tbody>
+            {this.state.results.map(this.displayResultRows, this)}
+          </tbody>
+        </table>
+      </div>)
     }
   }
   displayResultRows(results) {
     var result_common_name = "N/A";
     if (results.common_name !== null) {
+      //capitalise first letter of common name
       result_common_name = results.common_name.charAt(0).toUpperCase()+results.common_name.slice(1);
+    }
+    var image = '';
+    if (results.image_url !== null) {
+      image = <a href={results.image_url} target="_blank"><img src={results.image_url} alt={results.scientific_name}></img></a>
     }
     return(
       <tr>
         <td>{result_common_name}</td>
         <td>{results.scientific_name}</td>
-        <td><button onClick={this.addPlant(results.link)}>Add</button></td>
+        <td>{image}</td>
+        <td><button onClick={this.addPlant(results.links.plant)}>Add</button></td>
       </tr>
     );
   }
-
+  //add record
   addPlant = (link) => () => {
     const query = `/add?link=${link}`;
 
@@ -143,7 +134,7 @@ class MainPage extends Component {
         })
     );
   }
-  
+  //delete record
   deletePlant = (id) => () => {
     if (window.confirm("Do you want to delete this plant from your list?")) {
       const query = `/delete?id=${id}`;
@@ -157,11 +148,33 @@ class MainPage extends Component {
         });
     }
   }
-
+  //display table
+  displayTable() {
+    if (this.state.ready) {
+      return(<div className="App-table">
+        <table>
+          <thead>
+            <th>Common name</th>
+            <th>Scientific name</th>
+            <th>Genus</th>
+            <th>Family</th>
+            <th>Order</th>
+            <th>Class</th>
+            <th>Division</th>
+            <th>Image</th>
+          </thead>
+          <tbody>
+            {this.state.plants.map(this.displayPlants, this)}
+          </tbody>
+        </table>
+      </div>)
+    }
+  }
+  //display plants from collection
   displayPlants(data) {
-    var image = <Placeholder />;
+    var image = '';
     if (data.image !== '') {
-      image = <a href={data.image}><img src={data.image} alt="placeholder"></img></a>
+      image = <a href={data.image} target="_blank"><img src={data.image} alt={data.scientific_name}></img></a>
     }
     
     return (
@@ -178,9 +191,8 @@ class MainPage extends Component {
       </tr>
     )
   }
-  render() {
-    const data = this.state.plants;
 
+  render() {
     return (
       <div className="App">
         <header className="App-header">
@@ -197,11 +209,6 @@ class MainPage extends Component {
                 <option value="q">All categories</option>
                 <option value="common_name">Common name</option>
                 <option value="scientific_name">Scientific name</option>
-                <option value="genus">Genus</option>
-                <option value="family">Family</option>
-                <option value="order">Order</option>
-                <option value="class">Class</option>
-                <option value="division">Division</option>
               </select>
             </div>
             <div>
@@ -213,23 +220,7 @@ class MainPage extends Component {
           </form>
         </div>
         {this.displayResults()}
-        <div className="App-table">
-          <table>
-            <thead>
-              <th>Common name</th>
-              <th>Scientific name</th>
-              <th>Genus</th>
-              <th>Family</th>
-              <th>Order</th>
-              <th>Class</th>
-              <th>Division</th>
-              <th>Image</th>
-            </thead>
-            <tbody>
-              {data.map(this.displayPlants, this)}
-            </tbody>
-          </table>
-        </div>
+        {this.displayTable()}
       </div>
     );
   }
