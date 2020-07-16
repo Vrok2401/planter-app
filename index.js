@@ -110,7 +110,7 @@ app.get('/add', (req, res) => {
             plantValue.save()
             .then(result=> {
                 console.log("Success: "+result);
-                res.status(200).json("Plant added");
+                res.status(200).json(result);
             })
             .catch(error=> {
                 res.status(400).send(error);
